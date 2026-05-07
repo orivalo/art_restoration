@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python -c ' *)",
-      "PowerShell(python3 --version 2>$null)",
-      "PowerShell(py --version 2>$null)"
-    ]
-  }
-}
