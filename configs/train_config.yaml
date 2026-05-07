@@ -24,12 +24,18 @@ model:
   in_channels:  3
   out_channels: 3
 
-# ── Loss weights (Liu et al. 2018 defaults) ───────────────────────────
+# ── Loss weights ──────────────────────────────────────────────────────
+# Liu et al. 2018 defaults are (1.0, 6.0, 0.05, 120, 0.1), calibrated on
+# Places2 (natural photos).  We start with lambda_style = 50 instead of
+# 120 because Gram matrices on densely-textured paintings (impasto, thick
+# brush strokes) can produce large activations that overflow fp16 with
+# the higher weight.  The art-domain loss-weight ablation (Phase 4
+# Experiment A2) will sweep this systematically.
 loss:
   lambda_valid: 1.0
   lambda_hole:  6.0
   lambda_perc:  0.05
-  lambda_style: 120.0
+  lambda_style: 50.0
   lambda_tv:    0.1
 
 # ── Optimization ──────────────────────────────────────────────────────

@@ -162,6 +162,8 @@ class Trainer:
             "ssim": -float("inf"),
         }
         self.epochs_without_improvement = 0
+        self._consecutive_nan = 0       # numerical-stability guard counter
+        self._max_consecutive_nan = 10  # abort after this many in a row
 
         # ── Auto-resume from latest checkpoint, if requested ──────────
         resume_setting = self.cfg["checkpoint"].get("resume", "auto")
@@ -329,6 +331,24 @@ class Trainer:
                 loss_dict = self.criterion(output, gt, mask)
                 loss = loss_dict["total"]
 
+            # ── NaN/Inf guard (catches fp16 overflow before it corrupts weights)
+            if not torch.isfinite(loss):
+                self._consecutive_nan += 1
+                tqdm.write(
+                    f"  WARNING: non-finite loss at epoch {epoch} iter {it} "
+                    f"(consecutive NaN: {self._consecutive_nan})"
+                )
+                if self._consecutive_nan >= self._max_consecutive_nan:
+                    raise RuntimeError(
+                        f"{self._max_consecutive_nan} consecutive non-finite losses. "
+                        "Likely fp16 overflow from large style-loss weight, "
+                        "corrupted batch, or bad checkpoint state. "
+                        "Try: lower 'lambda_style' in config, or set 'amp: false'."
+                    )
+                # Skip this batch — do NOT call backward / step
+                continue
+            self._consecutive_nan = 0
+
             self.scaler.scale(loss).backward()
 
             if grad_clip > 0:
@@ -342,6 +362,17 @@ class Trainer:
             for k, v in loss_dict.items():
                 loss_sums[k] = loss_sums.get(k, 0.0) + float(v.item())
             n_batches += 1
+
+            # Loss-spike detection: warn if current total > 5× running mean
+            # after the first 10 iterations (avoids false alarms during warmup).
+            if n_batches > 10:
+                running_mean = loss_sums["total"] / n_batches
+                current = float(loss_dict["total"].item())
+                if current > 5.0 * running_mean:
+                    tqdm.write(
+                        f"  WARNING: loss spike at iter {it} "
+                        f"(current={current:.3f} vs mean={running_mean:.3f})"
+                    )
 
             if it % log_every == 0:
                 pbar.set_postfix(
