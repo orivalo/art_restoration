@@ -66,42 +66,61 @@ class InpaintingDataset(Dataset):
 
     Args:
         image_dir: Root directory to scan recursively for image files.
+            Ignored if ``image_paths`` is provided.
         mask_generator: ``MaskGenerator`` instance used to produce masks.
         transform: albumentations ``Compose`` transform. Defaults to
             ``build_default_transform(image_size)`` if ``None``.
         difficulty: Mask difficulty level forwarded to
             ``MaskGenerator.generate``.
         image_size: Square output resolution in pixels.
-        extensions: Filename suffixes to include during directory scan.
+        extensions: Filename suffixes to include during directory scan
+            (only applies when ``image_paths`` is ``None``).
+        image_paths: Optional explicit list of image paths to use instead
+            of scanning ``image_dir``.  Supplying this is preferred when
+            working with pre-computed train/val/test split CSVs because
+            it lets the Dataset see exactly the files in that split and
+            nothing else.
 
     Raises:
-        FileNotFoundError: If no images matching ``extensions`` are found
-            under ``image_dir``.
+        ValueError: If neither ``image_dir`` nor ``image_paths`` is given.
+        FileNotFoundError: If a directory scan returns no matching images.
     """
 
     def __init__(
         self,
-        image_dir: str | Path,
-        mask_generator: MaskGenerator,
+        image_dir: str | Path | None = None,
+        mask_generator: MaskGenerator | None = None,
         transform: Optional[A.Compose] = None,
         difficulty: DifficultyLevel = "medium",
         image_size: int = 256,
         extensions: tuple[str, ...] = (".jpg", ".jpeg", ".png"),
+        image_paths: list[str | Path] | None = None,
     ) -> None:
-        self.image_dir = Path(image_dir)
+        if mask_generator is None:
+            raise ValueError("mask_generator is required")
+        if image_paths is None and image_dir is None:
+            raise ValueError("Provide either image_dir or image_paths")
+
         self.mask_generator = mask_generator
         self.image_size = image_size
         self.difficulty = difficulty
         self.transform = transform if transform is not None else build_default_transform(image_size)
 
-        self.image_paths: list[Path] = sorted(
-            p for p in self.image_dir.rglob("*")
-            if p.suffix.lower() in extensions
-        )
-        if not self.image_paths:
-            raise FileNotFoundError(
-                f"No images with extensions {extensions} found under {self.image_dir}"
+        if image_paths is not None:
+            # Explicit list — used by the Trainer with CSV-based splits
+            self.image_dir = None
+            self.image_paths: list[Path] = [Path(p) for p in image_paths]
+        else:
+            # Recursive directory scan (legacy behaviour)
+            self.image_dir = Path(image_dir)  # type: ignore[arg-type]
+            self.image_paths = sorted(
+                p for p in self.image_dir.rglob("*")
+                if p.suffix.lower() in extensions
             )
+            if not self.image_paths:
+                raise FileNotFoundError(
+                    f"No images with extensions {extensions} found under {self.image_dir}"
+                )
 
     def __len__(self) -> int:
         return len(self.image_paths)
