@@ -253,8 +253,8 @@ art-restoration/
 
 When this file is updated at the end of each phase, the line below shifts. Claude Code should re-read this section first when starting a session.
 
-**Status:** Phase 0 complete (literature review committed and reviewed). Phase 1 in progress: data collection and preparation. Next deliverables: project skeleton (this commit), `notebooks/01_data_preparation.ipynb`, `src/data/mask_generator.py`, `src/data/dataset.py`, `requirements.txt`. After Phase 1: Phase 2 (model architecture).
+**Status:** Phase 1 complete (39 769 images preprocessed, splits 80/10/10 stratified by style, all artifacts on Drive). `dataset_stats.md` committed at repo root. Phase 2 in progress: model architecture. Next deliverables: `src/models/partial_conv.py`, `src/models/pconv_unet.py`, `src/training/losses.py`. Each file must include math docstring, type hints, and a `__main__` smoke test that verifies output shapes on a random tensor.
 
 ---
 
-*Last updated: April 2026, end of Phase 0.*
+*Last updated: May 2026, end of Phase 1.*
