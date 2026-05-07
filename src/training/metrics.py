@@ -21,8 +21,19 @@ from typing import Any
 import torch
 import torch.nn as nn
 
-from torchmetrics.functional import peak_signal_noise_ratio
-from torchmetrics.functional import structural_similarity_index_measure
+# Future-proof import paths — torchmetrics 2.0 is moving the functional
+# image metrics out of the top-level ``torchmetrics.functional`` namespace
+# into dedicated submodules.  Fall back gracefully on older versions.
+try:
+    from torchmetrics.functional.image import (
+        peak_signal_noise_ratio,
+        structural_similarity_index_measure,
+    )
+except ImportError:                      # torchmetrics < 1.0 fallback
+    from torchmetrics.functional import (   # type: ignore[no-redef]
+        peak_signal_noise_ratio,
+        structural_similarity_index_measure,
+    )
 
 # ── Optional stateful metrics (FID / LPIPS) ──────────────────────────────────
 try:
