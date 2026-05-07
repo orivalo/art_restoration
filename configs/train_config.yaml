@@ -1,0 +1,77 @@
+# Default training configuration for PConv U-Net (Phase 3).
+# Re-used by every notebook unless explicitly overridden.
+
+experiment:
+  name: pconv_unet_baseline
+  seed: 42
+  description: >
+    Baseline PConv U-Net training on WikiArt with full Liu et al. 2018
+    loss (L1 valid + L1 hole + perceptual + style + TV).
+
+# ── Data ──────────────────────────────────────────────────────────────
+data:
+  splits_dir: /content/drive/MyDrive/art_restoration/data/splits
+  train_csv: train.csv
+  val_csv:   val.csv
+  test_csv:  test.csv
+  image_size: 256
+  difficulty: medium       # 'light' | 'medium' | 'heavy'
+  num_workers: 2           # Colab T4 sweet spot
+  pin_memory: true
+
+# ── Model ─────────────────────────────────────────────────────────────
+model:
+  in_channels:  3
+  out_channels: 3
+
+# ── Loss weights (Liu et al. 2018 defaults) ───────────────────────────
+loss:
+  lambda_valid: 1.0
+  lambda_hole:  6.0
+  lambda_perc:  0.05
+  lambda_style: 120.0
+  lambda_tv:    0.1
+
+# ── Optimization ──────────────────────────────────────────────────────
+optim:
+  type: adam
+  lr: 2.0e-4
+  betas: [0.9, 0.999]
+  weight_decay: 0.0
+
+scheduler:
+  type: cosine            # 'cosine' | 'step' | 'none'
+  warmup_epochs: 1
+  min_lr: 1.0e-6
+
+# ── Training loop ─────────────────────────────────────────────────────
+train:
+  batch_size: 4           # 8 on P100, 4 on T4
+  num_epochs: 50
+  grad_clip: 1.0
+  amp: true               # mixed precision (mandatory on T4)
+  log_every: 50           # iterations
+  validate_every: 1       # epochs
+
+# ── Checkpoints / logging ─────────────────────────────────────────────
+checkpoint:
+  dir: /content/drive/MyDrive/art_restoration/checkpoints/pconv_unet_baseline
+  save_every: 5           # epochs
+  metric_for_best: psnr   # higher is better
+  resume: auto            # 'auto' | 'no' | path/to/checkpoint.pth
+
+logging:
+  log_dir: /content/drive/MyDrive/art_restoration/logs/pconv_unet_baseline
+  csv_filename: training_log.csv
+  num_vis_samples: 8      # validation visualization grid
+
+# ── Early stopping ────────────────────────────────────────────────────
+early_stopping:
+  enabled: true
+  patience: 15            # epochs of no improvement
+  min_delta: 1.0e-3       # in PSNR (dB)
+
+# ── Evaluation (Phase 4 — slow metrics, run on test set only) ─────────
+eval:
+  compute_fid: false
+  compute_lpips: false
