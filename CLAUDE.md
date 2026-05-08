@@ -156,19 +156,18 @@ art-restoration/
 ├── literature_review.md
 │
 ├── configs/
-│   ├── train_config.yaml
+│   ├── train_config.yaml                      # default (legacy; kept as fallback)
 │   └── experiment_configs/
-│       ├── ablation_l1_only.yaml
-│       ├── ablation_l1_perceptual.yaml
-│       └── ablation_full_loss.yaml
+│       ├── pconv_unet.yaml                    # PRIMARY model config
+│       ├── unet_baseline.yaml                 # Vanilla U-Net baseline (same hyperparams as PConv)
+│       └── gated_unet.yaml                    # Gated U-Net baseline (same hyperparams as PConv)
 │
 ├── notebooks/
-│   ├── 01_data_preparation.ipynb     # Phase 1
-│   ├── 02_train_pconv.ipynb          # Phase 3
-│   ├── 03_train_gated.ipynb          # Phase 3
-│   ├── 04_ablation_study.ipynb       # Phase 4
-│   ├── 05_evaluation.ipynb           # Phase 4
-│   └── 06_visualizations.ipynb       # for thesis figures
+│   ├── 01_data_preparation.ipynb         # Phase 1 — WikiArt → Drive
+│   ├── 02_train_pconv.ipynb              # Phase 3 — primary model
+│   ├── 03_train_unet_baseline.ipynb      # Phase 4 — Vanilla U-Net baseline
+│   ├── 04_train_gated_unet.ipynb         # Phase 4 — Gated U-Net baseline
+│   └── 05_evaluate.ipynb                 # Phase 4 — comparison + stats + LaTeX
 │
 ├── src/
 │   ├── __init__.py
@@ -178,11 +177,13 @@ art-restoration/
 │   │   ├── mask_generator.py         # MaskGenerator with 4 damage types
 │   │   └── transforms.py             # albumentations wrappers
 │   ├── models/
-│   │   ├── __init__.py
+│   │   ├── __init__.py               # re-exports build_model, SUPPORTED_ARCHS
+│   │   ├── registry.py               # build_model(cfg) factory dispatch
 │   │   ├── partial_conv.py           # PartialConv2d layer
-│   │   ├── pconv_unet.py             # PConvUNet
+│   │   ├── pconv_unet.py             # PConvUNet (~26M params, primary)
+│   │   ├── unet_baseline.py          # VanillaUNet (~26M params, baseline 1)
 │   │   ├── gated_conv.py             # GatedConv2d layer
-│   │   └── gated_unet.py             # GatedUNet
+│   │   └── gated_unet.py             # GatedUNet (~50M params, baseline 2)
 │   ├── training/
 │   │   ├── __init__.py
 │   │   ├── trainer.py                # Trainer class
@@ -249,12 +250,56 @@ art-restoration/
 
 ---
 
+## Drive layout (live, verified 2026-05-08)
+
+User runs everything through Google Colab + Google Drive.  Drive is mounted at `/content/drive`.  The actual on-Drive layout is:
+
+```
+/content/drive/MyDrive/art_restoration/
+├── code/                                 # Drive-cached source tree (refreshed from GitHub by Cell 1)
+├── data/
+│   ├── splits/
+│   │   ├── train.csv                     # 31,815 rows
+│   │   ├── val.csv                       #  3,977 rows
+│   │   └── test.csv                      #  3,977 rows
+│   └── processed/                        # ~39,213 jpg total (close to 39,769 — small loss is expected)
+│       ├── impressionism/                # impressionism_<hash>.jpg
+│       ├── post_impressionism/
+│       ├── renaissance/
+│       ├── baroque/
+│       └── realism/
+├── checkpoints/
+│   ├── pconv_unet/{last,best,epoch_NNN}.pth
+│   ├── unet_baseline/{last,best,epoch_NNN}.pth
+│   └── gated_unet/{last,best,epoch_NNN}.pth
+├── logs/
+│   ├── pconv_unet/{training_log.csv, figures/val_epoch_NNN.png}
+│   ├── unet_baseline/...
+│   └── gated_unet/...
+└── outputs/
+    └── eval/                             # 05_evaluate.ipynb writes here
+        ├── test_masks/<damage>/<difficulty>/<img_id>.png
+        ├── per_image_metrics.csv
+        ├── fid_results.csv
+        ├── stats_results.csv
+        ├── tables/{table1_overall,table2_per_difficulty}.tex
+        └── figures/{fig1,fig2,fig3}.{png,pdf}
+```
+
+Critical notes:
+
+* **Dataset is at `data/processed/<style>/<style>_<hash>.jpg`** — NOT `processed/` at the root.  The split CSVs hold absolute paths (`/content/drive/MyDrive/art_restoration/data/processed/...`), so they only resolve when Drive is mounted at the conventional `/content/drive` mount point.
+* **Drive is on the user's previous Google account.**  GPU quota is on the new Colab account.  In Colab the user must call `drive.mount('/content/drive', force_remount=True)` and pick the **previous** account in the OAuth selector — otherwise `/content/drive/MyDrive/art_restoration/` will be empty.
+* **Drive cache for code (`code/`)** is independent of the user's local repo.  Each notebook's Cell 1 has a `REFRESH_FROM_GITHUB` flag — set `True` to wipe the cache and re-clone from `phase2-partial-conv`, `False` to use the fast cached copy.
+
+---
+
 ## Current phase pointer
 
 When this file is updated at the end of each phase, the line below shifts. Claude Code should re-read this section first when starting a session.
 
-**Status:** Phase 1 complete (39 769 images preprocessed, splits 80/10/10 stratified by style, all artifacts on Drive). `dataset_stats.md` committed at repo root. Phase 2 in progress: model architecture. Next deliverables: `src/models/partial_conv.py`, `src/models/pconv_unet.py`, `src/training/losses.py`. Each file must include math docstring, type hints, and a `__main__` smoke test that verifies output shapes on a random tensor.
+**Status:** Phase 2 + 3 complete (PConv U-Net + InpaintingLoss + Trainer + 02 notebook smoke-tested).  Phase 4 in progress: academic comparison.  Two baselines added (`VanillaUNet`, `GatedUNet`) dispatched through `src/models/registry.py::build_model`; identical-recipe configs in `configs/experiment_configs/{pconv_unet,unet_baseline,gated_unet}.yaml`; baseline training notebooks `03_train_unet_baseline.ipynb`, `04_train_gated_unet.ipynb`; evaluation harness `05_evaluate.ipynb` with deterministic test masks, per-image PSNR/SSIM/LPIPS, per-cell FID, paired Wilcoxon + Bonferroni, bootstrap CI, LaTeX tables and figures.  **Next:** user runs notebook 02 → 03 → 04 (training, ~3-4 days), then 05 (evaluation).
 
 ---
 
-*Last updated: May 2026, end of Phase 1.*
+*Last updated: May 2026, Phase 4 — academic comparison.*
