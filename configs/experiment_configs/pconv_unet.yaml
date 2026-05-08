@@ -1,0 +1,83 @@
+# Experiment config — PConv U-Net (PRIMARY MODEL)
+# Liu et al., ECCV 2018, arXiv:1804.07723
+#
+# Identical hyperparameters to unet_baseline.yaml and gated_unet.yaml
+# except for `model.arch` and per-experiment paths.  This is the
+# fairness contract for the academic comparison study.
+
+experiment:
+  name: pconv_unet
+  seed: 42
+  description: >
+    PConv U-Net trained from scratch on full WikiArt (39,769 paintings,
+    5 styles, 256x256), 20 epochs, full Liu et al. 2018 loss
+    (L1 valid + L1 hole + perceptual + style + TV).  PRIMARY MODEL.
+
+# ── Data ──────────────────────────────────────────────────────────────
+data:
+  splits_dir: /content/drive/MyDrive/art_restoration/data/splits
+  train_csv: train.csv
+  val_csv:   val.csv
+  test_csv:  test.csv
+  image_size: 256
+  difficulty: medium
+  num_workers: 2
+  pin_memory: true
+
+# ── Model ─────────────────────────────────────────────────────────────
+model:
+  arch: pconv_unet
+  in_channels:  3
+  out_channels: 3
+
+# ── Loss weights (Liu et al. 2018, art-domain style weight reduced) ──
+loss:
+  lambda_valid: 1.0
+  lambda_hole:  6.0
+  lambda_perc:  0.05
+  lambda_style: 50.0
+  lambda_tv:    0.1
+
+# ── Optimization ──────────────────────────────────────────────────────
+optim:
+  type: adam
+  lr: 2.0e-4
+  betas: [0.9, 0.999]
+  weight_decay: 0.0
+
+scheduler:
+  type: cosine
+  warmup_epochs: 1
+  min_lr: 1.0e-6
+
+# ── Training loop ─────────────────────────────────────────────────────
+train:
+  batch_size: 4           # 8 on P100, 4 on T4 — override in notebook if needed
+  num_epochs: 20          # reduced from 50 to fit comparison schedule
+  grad_clip: 1.0
+  amp: true
+  log_every: 50
+  validate_every: 1
+
+# ── Checkpoints / logging ─────────────────────────────────────────────
+checkpoint:
+  dir: /content/drive/MyDrive/art_restoration/checkpoints/pconv_unet
+  save_every: 5
+  metric_for_best: psnr
+  resume: auto
+
+logging:
+  log_dir: /content/drive/MyDrive/art_restoration/logs/pconv_unet
+  csv_filename: training_log.csv
+  num_vis_samples: 8
+
+# ── Early stopping ────────────────────────────────────────────────────
+early_stopping:
+  enabled: true
+  patience: 8             # reduced from 15 to cap runaway runs
+  min_delta: 1.0e-3
+
+# ── Evaluation flags (used only by 05_evaluate.ipynb) ────────────────
+eval:
+  compute_fid: true
+  compute_lpips: true

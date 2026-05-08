@@ -20,7 +20,12 @@ data:
   pin_memory: true
 
 # ── Model ─────────────────────────────────────────────────────────────
+# arch dispatches via src/models/registry.py::build_model
+#   'pconv_unet'     — primary model (Liu et al. 2018)
+#   'unet_baseline'  — vanilla U-Net with mask concatenated as 4th channel
+#   'gated_unet'     — DeepFillv2-style gated convolution U-Net
 model:
+  arch: pconv_unet
   in_channels:  3
   out_channels: 3
 

@@ -1,6 +1,10 @@
-"""Trainer for PConv U-Net (Phase 3, Prompt 3.1).
+"""Generic Trainer for inpainting models (PConv / Vanilla / Gated U-Net).
 
-End-to-end resumable training loop for the PConv U-Net inpainting model.
+End-to-end resumable training loop.  The model is selected by
+``cfg["model"]["arch"]`` and instantiated through
+``src.models.registry.build_model`` — the same Trainer drives all three
+architectures used in the comparison study.
+
 Designed to survive Colab/Kaggle session limits (4–9 h):
 
 * Mixed-precision (AMP) with ``torch.cuda.amp.GradScaler``
@@ -57,7 +61,7 @@ from tqdm.auto import tqdm
 
 from src.data.dataset import InpaintingDataset
 from src.data.mask_generator import MaskGenerator
-from src.models.pconv_unet import PConvUNet
+from src.models.registry import build_model
 from src.training.losses import InpaintingLoss
 from src.training.metrics import psnr as compute_psnr
 from src.training.metrics import ssim as compute_ssim
@@ -116,13 +120,10 @@ class Trainer:
         self.figures_dir = self.log_dir / "figures"
         self.figures_dir.mkdir(parents=True, exist_ok=True)
 
-        # ── Model ──────────────────────────────────────────────────────
-        print("Building model...")
-        self.model: nn.Module = PConvUNet(
-            in_channels=self.cfg["model"]["in_channels"],
-            out_channels=self.cfg["model"]["out_channels"],
-            verbose=True,
-        ).to(self.device)
+        # ── Model (dispatched via registry on cfg["model"]["arch"]) ────
+        arch = str(self.cfg["model"].get("arch", "pconv_unet"))
+        print(f"Building model (arch='{arch}')...")
+        self.model: nn.Module = build_model(self.cfg).to(self.device)
 
         # ── Loss (InpaintingLoss instantiates a frozen VGG16 — slow) ───
         print("Building loss (downloads VGG16 weights on first run)...")
@@ -659,7 +660,7 @@ if __name__ == "__main__":
                 "num_workers": 0,
                 "pin_memory": False,
             },
-            "model": {"in_channels": 3, "out_channels": 3},
+            "model": {"arch": "pconv_unet", "in_channels": 3, "out_channels": 3},
             "loss": {
                 "lambda_valid": 1.0,
                 "lambda_hole": 6.0,

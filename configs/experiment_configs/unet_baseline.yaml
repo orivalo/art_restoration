@@ -1,0 +1,82 @@
+# Experiment config — Vanilla U-Net baseline (NO partial convolution)
+#
+# Drop-in topological twin of PConvUNet that uses ordinary nn.Conv2d
+# everywhere and concatenates the binary mask as a 4th input channel.
+# Identical hyperparameters to pconv_unet.yaml and gated_unet.yaml
+# except for `model.arch` and per-experiment paths.  Fairness contract.
+
+experiment:
+  name: unet_baseline
+  seed: 42
+  description: >
+    Vanilla U-Net (mask concatenated as 4th channel) trained from
+    scratch on full WikiArt with the same Liu et al. 2018 loss.
+    Isolates the contribution of the partial-convolution mechanism.
+
+# ── Data ──────────────────────────────────────────────────────────────
+data:
+  splits_dir: /content/drive/MyDrive/art_restoration/data/splits
+  train_csv: train.csv
+  val_csv:   val.csv
+  test_csv:  test.csv
+  image_size: 256
+  difficulty: medium
+  num_workers: 2
+  pin_memory: true
+
+# ── Model ─────────────────────────────────────────────────────────────
+model:
+  arch: unet_baseline
+  in_channels:  3
+  out_channels: 3
+
+# ── Loss weights — IDENTICAL to pconv_unet.yaml ───────────────────────
+loss:
+  lambda_valid: 1.0
+  lambda_hole:  6.0
+  lambda_perc:  0.05
+  lambda_style: 50.0
+  lambda_tv:    0.1
+
+# ── Optimization — IDENTICAL ──────────────────────────────────────────
+optim:
+  type: adam
+  lr: 2.0e-4
+  betas: [0.9, 0.999]
+  weight_decay: 0.0
+
+scheduler:
+  type: cosine
+  warmup_epochs: 1
+  min_lr: 1.0e-6
+
+# ── Training loop — IDENTICAL ─────────────────────────────────────────
+train:
+  batch_size: 4
+  num_epochs: 20
+  grad_clip: 1.0
+  amp: true
+  log_every: 50
+  validate_every: 1
+
+# ── Checkpoints / logging — per-experiment paths ─────────────────────
+checkpoint:
+  dir: /content/drive/MyDrive/art_restoration/checkpoints/unet_baseline
+  save_every: 5
+  metric_for_best: psnr
+  resume: auto
+
+logging:
+  log_dir: /content/drive/MyDrive/art_restoration/logs/unet_baseline
+  csv_filename: training_log.csv
+  num_vis_samples: 8
+
+# ── Early stopping — IDENTICAL ────────────────────────────────────────
+early_stopping:
+  enabled: true
+  patience: 8
+  min_delta: 1.0e-3
+
+eval:
+  compute_fid: true
+  compute_lpips: true
