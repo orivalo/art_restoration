@@ -21,7 +21,7 @@ import albumentations as A
 import numpy as np
 import torch
 from albumentations.pytorch import ToTensorV2
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from torch.utils.data import Dataset
 from numpy.typing import NDArray
 
@@ -142,10 +142,38 @@ class InpaintingDataset(Dataset):
             * **mask** — ``(1, H, W)`` float32, values in ``{0, 1}``.
             * **ground_truth** — ``(3, H, W)`` float32, values in ``[-1, 1]``.
 
-        Raises:
-            IOError: If the image file cannot be opened or decoded.
+        Notes:
+            On a corrupted JPEG / PIL ``UnidentifiedImageError`` / ``OSError``,
+            the implementation logs the bad path once and silently falls back
+            to a random other valid sample.  This keeps long training runs
+            from crashing on the occasional broken file in a 30k+ corpus.
         """
-        image_np = self._load_image(self.image_paths[idx])
+        original_idx = idx
+        max_retries = 8
+        for attempt in range(max_retries):
+            try:
+                image_np = self._load_image(self.image_paths[idx])
+                break
+            except (UnidentifiedImageError, OSError, ValueError) as e:
+                # Cache the bad path so we don't spam the log on every epoch
+                if not hasattr(self, "_bad_paths"):
+                    self._bad_paths: set[str] = set()
+                p = str(self.image_paths[idx])
+                if p not in self._bad_paths:
+                    self._bad_paths.add(p)
+                    print(
+                        f"[InpaintingDataset] WARNING: skipping unreadable image "
+                        f"({type(e).__name__}: {e}): {p}"
+                    )
+                # Pick a different random index and retry
+                idx = int(np.random.randint(0, len(self.image_paths)))
+        else:
+            raise RuntimeError(
+                f"Failed to load any valid image after {max_retries} retries "
+                f"starting from idx={original_idx}.  Many corrupted files in "
+                f"the dataset?"
+            )
+
         augmented = self.transform(image=image_np)
         ground_truth: torch.Tensor = augmented["image"]  # (3, H, W)
 
