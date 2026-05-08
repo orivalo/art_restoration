@@ -324,6 +324,14 @@ class InpaintingLoss(nn.Module):
     ) -> dict[str, torch.Tensor]:
         """Compute every loss term and the weighted total.
 
+        The full loss computation runs inside an ``autocast(enabled=False)``
+        context that forces fp32 even when the trainer's outer
+        ``autocast(enabled=True)`` is active.  This is essential because the
+        Gram-matrix style loss can overflow fp16 on a freshly-initialised
+        model — fp32 keeps the loss numerically well-behaved while the
+        model's forward pass continues to run in fp16 under outer AMP.
+        Gradients flow back from fp32 → fp16 cleanly.
+
         Args:
             output: ``(B, 3, H, W)`` in ``[0, 1]``.
             target: ``(B, 3, H, W)`` in ``[0, 1]``.
@@ -332,46 +340,54 @@ class InpaintingLoss(nn.Module):
         Returns:
             Dict with the per-term scalars and ``total``.
         """
-        # Composited image: keep valid pixels from GT, fill holes with prediction
-        composited = output * (1.0 - mask) + target * mask
+        # Force fp32 for the entire loss computation to prevent Gram-matrix
+        # overflow under outer AMP autocast.  Inputs are cast up to fp32
+        # explicitly so that all subsequent ops stay in fp32.
+        with torch.amp.autocast(device_type="cuda", enabled=False):
+            output = output.float()
+            target = target.float()
+            mask = mask.float()
 
-        # ── L1 split ─────────────────────────────────────────────────────
-        l1_v, l1_h = l1_loss(output, target, mask)
+            # Composited image: keep valid pixels from GT, fill holes with prediction
+            composited = output * (1.0 - mask) + target * mask
 
-        # ── VGG features for both raw and composited outputs ─────────────
-        feats_out = self.vgg(output)
-        feats_tgt = self.vgg(target)
-        feats_comp = self.vgg(composited)
+            # ── L1 split ─────────────────────────────────────────────────────
+            l1_v, l1_h = l1_loss(output, target, mask)
 
-        # ── Perceptual loss: out vs target  +  comp vs target ───────────
-        l_perc = sum(
-            F.l1_loss(fo, ft) for fo, ft in zip(feats_out, feats_tgt)
-        )
-        l_perc = l_perc + sum(  # type: ignore[assignment]
-            F.l1_loss(fc, ft) for fc, ft in zip(feats_comp, feats_tgt)
-        )
+            # ── VGG features for both raw and composited outputs ─────────────
+            feats_out = self.vgg(output)
+            feats_tgt = self.vgg(target)
+            feats_comp = self.vgg(composited)
 
-        # ── Style loss: Gram-matrix L1 on both raw and composited ───────
-        l_style = sum(
-            F.l1_loss(gram_matrix(fo), gram_matrix(ft))
-            for fo, ft in zip(feats_out, feats_tgt)
-        )
-        l_style = l_style + sum(  # type: ignore[assignment]
-            F.l1_loss(gram_matrix(fc), gram_matrix(ft))
-            for fc, ft in zip(feats_comp, feats_tgt)
-        )
+            # ── Perceptual loss: out vs target  +  comp vs target ───────────
+            l_perc = sum(
+                F.l1_loss(fo, ft) for fo, ft in zip(feats_out, feats_tgt)
+            )
+            l_perc = l_perc + sum(  # type: ignore[assignment]
+                F.l1_loss(fc, ft) for fc, ft in zip(feats_comp, feats_tgt)
+            )
 
-        # ── Total Variation on the composited output, hole-only ─────────
-        l_tv = total_variation_loss(composited, mask)
+            # ── Style loss: Gram-matrix L1 on both raw and composited ───────
+            l_style = sum(
+                F.l1_loss(gram_matrix(fo), gram_matrix(ft))
+                for fo, ft in zip(feats_out, feats_tgt)
+            )
+            l_style = l_style + sum(  # type: ignore[assignment]
+                F.l1_loss(gram_matrix(fc), gram_matrix(ft))
+                for fc, ft in zip(feats_comp, feats_tgt)
+            )
 
-        # ── Weighted sum ─────────────────────────────────────────────────
-        total = (
-            self.lambda_valid * l1_v
-            + self.lambda_hole * l1_h
-            + self.lambda_perc * l_perc
-            + self.lambda_style * l_style
-            + self.lambda_tv * l_tv
-        )
+            # ── Total Variation on the composited output, hole-only ─────────
+            l_tv = total_variation_loss(composited, mask)
+
+            # ── Weighted sum ─────────────────────────────────────────────────
+            total = (
+                self.lambda_valid * l1_v
+                + self.lambda_hole * l1_h
+                + self.lambda_perc * l_perc
+                + self.lambda_style * l_style
+                + self.lambda_tv * l_tv
+            )
 
         return {
             "total": total,

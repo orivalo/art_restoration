@@ -55,7 +55,7 @@ train:
   batch_size: 4
   num_epochs: 20
   grad_clip: 1.0
-  amp: false             # disabled — VGG-based style/perceptual loss can overflow fp16 on fresh model
+  amp: true              # safe — InpaintingLoss internally forces fp32 to avoid Gram-matrix overflow
   log_every: 50
   validate_every: 1
 
