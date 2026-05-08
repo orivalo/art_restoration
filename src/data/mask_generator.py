@@ -212,8 +212,12 @@ class MaskGenerator:
         for _ in range(num_blobs):
             cx = int(self._rng.uniform(0, w))
             cy = int(self._rng.uniform(0, h))
-            ax = int(self._rng.uniform(short * 0.05, short * 0.25 * density + 1))
-            ay = int(self._rng.uniform(short * 0.05, short * 0.25 * density + 1))
+            # Guard against degenerate uniform(low, high) when density is so
+            # small that 0.25 * short * density + 1 < 0.05 * short.
+            lo_axis = max(2, int(short * 0.05))
+            hi_axis = max(lo_axis + 1, int(short * 0.25 * density) + 1)
+            ax = int(self._rng.uniform(lo_axis, hi_axis))
+            ay = int(self._rng.uniform(lo_axis, hi_axis))
             rot = int(self._rng.uniform(0, 180))
 
             blob = np.ones((h, w), dtype=np.uint8)
@@ -253,11 +257,17 @@ class MaskGenerator:
         num_stains = max(1, int(density * 8))
 
         ys, xs = np.ogrid[:h, :w]
+        # Guard against degenerate uniform(low, high) when density is so
+        # small that 0.20 * dim * density + 1 < 0.04 * dim.
+        lo_sx = max(2.0, w * 0.04)
+        hi_sx = max(lo_sx + 1.0, w * 0.20 * density + 1.0)
+        lo_sy = max(2.0, h * 0.04)
+        hi_sy = max(lo_sy + 1.0, h * 0.20 * density + 1.0)
         for _ in range(num_stains):
             cx = float(self._rng.uniform(0, w))
             cy = float(self._rng.uniform(0, h))
-            sx = float(self._rng.uniform(w * 0.04, w * 0.20 * density + 1))
-            sy = float(self._rng.uniform(h * 0.04, h * 0.20 * density + 1))
+            sx = float(self._rng.uniform(lo_sx, hi_sx))
+            sy = float(self._rng.uniform(lo_sy, hi_sy))
             intensity = float(self._rng.uniform(0.6, 1.0))
             blob = intensity * np.exp(
                 -((xs - cx) ** 2 / (2 * sx ** 2) + (ys - cy) ** 2 / (2 * sy ** 2))

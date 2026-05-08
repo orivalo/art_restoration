@@ -55,7 +55,7 @@ train:
   batch_size: 4           # 8 on P100, 4 on T4 — override in notebook if needed
   num_epochs: 20          # reduced from 50 to fit comparison schedule
   grad_clip: 1.0
-  amp: true
+  amp: false             # disabled — VGG-based style/perceptual loss can overflow fp16 on fresh model
   log_every: 50
   validate_every: 1
 
