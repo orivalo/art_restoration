@@ -53,7 +53,7 @@ scheduler:
 # ── Training loop ─────────────────────────────────────────────────────
 train:
   batch_size: 4           # 8 on P100, 4 on T4 — override in notebook if needed
-  num_epochs: 20          # reduced from 50 to fit comparison schedule
+  num_epochs: 12          # reduced from 20 to fit free-tier compute budget (Plan v2)
   grad_clip: 1.0
   amp: true              # safe — InpaintingLoss internally forces fp32 to avoid Gram-matrix overflow
   log_every: 50

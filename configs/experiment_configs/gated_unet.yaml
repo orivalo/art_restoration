@@ -57,7 +57,7 @@ scheduler:
 # ── Training loop — IDENTICAL ─────────────────────────────────────────
 train:
   batch_size: 4
-  num_epochs: 20
+  num_epochs: 12          # reduced from 20 to fit free-tier compute budget (Plan v2)
   grad_clip: 1.0
   amp: true              # safe — InpaintingLoss internally forces fp32 to avoid Gram-matrix overflow
   log_every: 50
