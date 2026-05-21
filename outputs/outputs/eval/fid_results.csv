@@ -1,0 +1,10 @@
+model,difficulty,fid
+pconv_unet,light,4.174879550933838
+pconv_unet,medium,8.476934432983398
+pconv_unet,heavy,17.724010467529297
+unet_baseline,light,0.6460105776786804
+unet_baseline,medium,3.7870023250579834
+unet_baseline,heavy,14.716287612915039
+gated_unet,light,-0.19057102501392365
+gated_unet,medium,0.5636809468269348
+gated_unet,heavy,11.96077823638916

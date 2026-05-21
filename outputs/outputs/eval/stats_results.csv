@@ -1,0 +1,7 @@
+baseline,metric,p_value,p_significant_bonferroni,effect_median
+unet_baseline,psnr,1.0,False,-1.4320831298828125
+unet_baseline,ssim,1.0,False,-0.02741539478302002
+unet_baseline,lpips,1.0,False,-0.020545484498143248
+gated_unet,psnr,1.0,False,-1.9247360229492223
+gated_unet,ssim,1.0,False,-0.03539448976516729
+gated_unet,lpips,1.0,False,-0.027426384389400496

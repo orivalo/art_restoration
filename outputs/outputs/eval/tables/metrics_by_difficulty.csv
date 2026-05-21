@@ -1,0 +1,6 @@
+,psnr,psnr,psnr,ssim,ssim,ssim,lpips,lpips,lpips
+difficulty,heavy,light,medium,heavy,light,medium,heavy,light,medium
+model,,,,,,,,,
+gated_unet,26.1598,35.1016,29.8453,0.8167,0.9663,0.9062,0.1352,0.0174,0.0646
+pconv_unet,24.7958,31.4658,28.27,0.7661,0.9206,0.8727,0.1778,0.0501,0.0907
+unet_baseline,25.7226,34.5676,29.4683,0.8014,0.9617,0.8993,0.1479,0.0215,0.0716

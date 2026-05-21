@@ -1,0 +1,4 @@
+model,psnr,ssim,lpips
+gated_unet,30.3689,0.8964,0.0724
+pconv_unet,28.1772,0.8531,0.1062
+unet_baseline,29.9195,0.8874,0.0804

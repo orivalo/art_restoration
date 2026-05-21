@@ -1,0 +1,6 @@
+,psnr,psnr,psnr,psnr,ssim,ssim,ssim,ssim,lpips,lpips,lpips,lpips
+damage,brush,crack,paint_loss,stain,brush,crack,paint_loss,stain,brush,crack,paint_loss,stain
+model,,,,,,,,,,,,
+gated_unet,32.5783,33.6006,27.6037,27.693,0.923,0.9328,0.8638,0.866,0.0363,0.0269,0.1156,0.1107
+pconv_unet,30.4725,29.9582,26.0939,26.1842,0.8837,0.8727,0.8277,0.8284,0.0691,0.0688,0.1441,0.1428
+unet_baseline,31.9181,32.97,27.3465,27.4434,0.9103,0.9218,0.8581,0.8595,0.0491,0.0358,0.1191,0.1174
