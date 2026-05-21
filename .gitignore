@@ -53,3 +53,6 @@ notebooks/Notebooks with outputs/
 # Generated artefacts that are easy to recreate from sources
 demo/__pycache__/
 thesis/figures/__pycache__/
+
+# Thesis & defence materials (kept locally only)
+thesis/
