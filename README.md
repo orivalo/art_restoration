@@ -1,6 +1,6 @@
 # Art Restoration with Deep Learning Inpainting
 
-Bachelor's diploma project — *Restoration of Historic Artworks Using Deep
+*Restoration of Historic Artworks Using Deep
 Learning-Based Digital Inpainting*.
 
 A rigorous comparative study of three convolutional inpainting architectures
