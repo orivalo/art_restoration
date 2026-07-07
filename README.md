@@ -4,8 +4,7 @@
 Learning-Based Digital Inpainting*.
 
 A rigorous comparative study of three convolutional inpainting architectures
-applied to damaged paintings, with an interactive Gradio demo, a generated
-Word thesis, and PowerPoint defence slides.
+applied to damaged paintings, with an interactive Gradio demo.
 
 ## Headline result
 
