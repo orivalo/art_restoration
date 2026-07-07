@@ -1,3 +1,4 @@
+
 # Art Restoration with Deep Learning Inpainting
 
 *Restoration of Historic Artworks Using Deep
@@ -18,6 +19,9 @@ Evaluation on 3,977 held-out WikiArt paintings × 4 damage types × 3
 difficulty levels = 47,724 (image, mask) pairs. The ranking holds across
 every cell and is statistically significant under a paired Wilcoxon
 signed-rank test with Bonferroni correction.
+
+<img width="5952" height="1280" alt="fig2_highres_comparison" src="https://github.com/user-attachments/assets/feeec058-0711-463d-854a-877783a16485" />
+<img width="5331" height="1752" alt="fig1_academic_metrics" src="https://github.com/user-attachments/assets/ee437c69-2bc0-4654-a7e4-47f2592953f4" />
 
 ## Quick start
 
